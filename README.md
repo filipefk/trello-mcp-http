@@ -91,6 +91,30 @@ Exemplo de configuração para Claude Desktop (`claude_desktop_config.json`):
 }
 ```
 
+### Conectando via Claude Code CLI
+
+Para adicionar o MCP diretamente pelo terminal do Claude Code:
+
+```bash
+# Adicionar no projeto atual
+claude mcp add trello --transport http http://localhost:5123/mcp \
+  --header "X-Trello-Api-Key: sua-api-key" \
+  --header "X-Trello-Token: seu-token"
+
+# Adicionar globalmente (disponível em todos os projetos)
+claude mcp add --scope user trello --transport http http://localhost:5123/mcp \
+  --header "X-Trello-Api-Key: sua-api-key" \
+  --header "X-Trello-Token: seu-token"
+```
+
+Outros comandos úteis:
+
+```bash
+claude mcp list          # Lista MCPs configurados
+claude mcp get trello    # Ver detalhes do MCP
+claude mcp remove trello # Remover o MCP
+```
+
 ## Tools disponíveis
 
 | Tool | Descrição |
