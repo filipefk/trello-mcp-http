@@ -1,0 +1,726 @@
+{
+  "info": {
+    "name": "Trello MCP HTTP",
+    "description": "Collection para testar o servidor MCP do Trello via HTTP (JSON-RPC 2.0).\n\nFluxo recomendado:\n1. Configure as variáveis `trello_api_key` e `trello_token` no environment.\n2. Execute **Initialize** — o `mcp-session-id` é salvo automaticamente.\n3. Execute qualquer tool na ordem desejada.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5123",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Initialize",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "function parseMcpResponse() {",
+              "    var body = pm.response.text();",
+              "    var dataLine = body.split('\\n').find(l => l.startsWith('data:'));",
+              "    return JSON.parse(dataLine.replace(/^data:\\s*/, ''));",
+              "}",
+              "",
+              "// Salva o session id retornado no header",
+              "var sessionId = pm.response.headers.get('mcp-session-id');",
+              "if (sessionId) {",
+              "    pm.environment.set('mcp_session_id', sessionId);",
+              "    console.log('mcp-session-id salvo:', sessionId);",
+              "} else {",
+              "    console.warn('Header mcp-session-id não encontrado na resposta.');",
+              "}",
+              "",
+              "// Valida que a resposta é 200 e tem result",
+              "pm.test('Status 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Resposta contém result', function () {",
+              "    var json = parseMcpResponse();",
+              "    pm.expect(json).to.have.property('result');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+          { "key": "X-Trello-Token", "value": "{{trello_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2024-11-05\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"postman\",\n      \"version\": \"1.0\"\n    }\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/mcp",
+          "host": ["{{base_url}}"],
+          "path": ["mcp"]
+        },
+        "description": "Inicia a sessão MCP. O `mcp-session-id` retornado no header é salvo automaticamente na variável de environment `mcp_session_id`."
+      }
+    },
+    {
+      "name": "2. List Tools",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "function parseMcpResponse() {",
+              "    var body = pm.response.text();",
+              "    var dataLine = body.split('\\n').find(l => l.startsWith('data:'));",
+              "    return JSON.parse(dataLine.replace(/^data:\\s*/, ''));",
+              "}",
+              "",
+              "pm.test('Status 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Resposta contém lista de tools', function () {",
+              "    var json = parseMcpResponse();",
+              "    pm.expect(json.result).to.have.property('tools');",
+              "    pm.expect(json.result.tools).to.be.an('array');",
+              "    console.log('Tools disponíveis:', json.result.tools.map(t => t.name));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+          { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+          { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/list\",\n  \"params\": {}\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/mcp",
+          "host": ["{{base_url}}"],
+          "path": ["mcp"]
+        },
+        "description": "Lista todas as tools disponíveis no servidor MCP."
+      }
+    },
+    {
+      "name": "Boards",
+      "item": [
+        {
+          "name": "get_boards",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Retornou boards', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.result).to.have.property('content');",
+                  "});",
+                  "",
+                  "// Salva o ID do primeiro board encontrado",
+                  "try {",
+                  "    var json = pm.response.json();",
+                  "    var content = json.result.content[0].text;",
+                  "    var boards = JSON.parse(content);",
+                  "    if (boards.length > 0) {",
+                  "        pm.environment.set('board_id', boards[0].id);",
+                  "        pm.environment.set('board_name', boards[0].name);",
+                  "        console.log('board_id salvo:', boards[0].id, '| Nome:', boards[0].name);",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.warn('Não foi possível extrair board_id:', e.message);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 10,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_boards\",\n    \"arguments\": {}\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Lista todos os boards do usuário autenticado. Salva automaticamente o `board_id` e `board_name` do primeiro board na variável de environment."
+          }
+        },
+        {
+          "name": "get_board_id_by_name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Salva o board_id retornado",
+                  "try {",
+                  "    var json = pm.response.json();",
+                  "    var boardId = json.result.content[0].text.trim();",
+                  "    if (!boardId.includes('não encontrado')) {",
+                  "        pm.environment.set('board_id', boardId);",
+                  "        console.log('board_id salvo:', boardId);",
+                  "    } else {",
+                  "        console.warn('Board não encontrado:', boardId);",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.warn('Não foi possível extrair board_id:', e.message);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 11,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_board_id_by_name\",\n    \"arguments\": {\n      \"board_name\": \"Meu Board\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Busca o ID de um board pelo nome. Salva o resultado em `board_id`. Altere `board_name` no body para o nome do seu board."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lists (Colunas)",
+      "item": [
+        {
+          "name": "get_lists",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Salva o ID da primeira coluna encontrada",
+                  "try {",
+                  "    var json = pm.response.json();",
+                  "    var content = json.result.content[0].text;",
+                  "    var lists = JSON.parse(content);",
+                  "    if (lists.length > 0) {",
+                  "        pm.environment.set('list_id', lists[0].id);",
+                  "        pm.environment.set('list_name', lists[0].name);",
+                  "        console.log('list_id salvo:', lists[0].id, '| Nome:', lists[0].name);",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.warn('Não foi possível extrair list_id:', e.message);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 20,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_lists\",\n    \"arguments\": {\n      \"board_id\": \"{{board_id}}\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Lista as colunas de um board. Usa a variável `board_id`. Salva automaticamente o `list_id` e `list_name` da primeira coluna."
+          }
+        },
+        {
+          "name": "get_list_id_by_board_name_and_list_name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Salva o list_id retornado",
+                  "try {",
+                  "    var json = pm.response.json();",
+                  "    var listId = json.result.content[0].text.trim();",
+                  "    if (!listId.includes('não encontrad')) {",
+                  "        pm.environment.set('list_id', listId);",
+                  "        console.log('list_id salvo:', listId);",
+                  "    } else {",
+                  "        console.warn('Coluna não encontrada:', listId);",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.warn('Não foi possível extrair list_id:', e.message);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 21,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_list_id_by_board_name_and_list_name\",\n    \"arguments\": {\n      \"board_name\": \"Meu Board\",\n      \"list_name\": \"A Fazer\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Busca o ID de uma coluna pelos nomes do board e da coluna. Salva o resultado em `list_id`. Altere `board_name` e `list_name` no body."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cards",
+      "item": [
+        {
+          "name": "get_cards",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Salva o ID do primeiro card encontrado",
+                  "try {",
+                  "    var json = pm.response.json();",
+                  "    var content = json.result.content[0].text;",
+                  "    var cards = JSON.parse(content);",
+                  "    if (cards.length > 0) {",
+                  "        pm.environment.set('card_id', cards[0].id);",
+                  "        pm.environment.set('card_name', cards[0].name);",
+                  "        console.log('card_id salvo:', cards[0].id, '| Nome:', cards[0].name);",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.warn('Não foi possível extrair card_id:', e.message);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 30,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_cards\",\n    \"arguments\": {\n      \"list_id\": \"{{list_id}}\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Lista os cards de uma coluna. Usa a variável `list_id`. Salva automaticamente o `card_id` e `card_name` do primeiro card."
+          }
+        },
+        {
+          "name": "get_card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 31,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_card\",\n    \"arguments\": {\n      \"card_id\": \"{{card_id}}\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Busca os detalhes de um card específico. Usa a variável `card_id`."
+          }
+        },
+        {
+          "name": "create_card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Salva o ID do card criado",
+                  "try {",
+                  "    var json = pm.response.json();",
+                  "    var content = json.result.content[0].text;",
+                  "    var card = JSON.parse(content);",
+                  "    if (card.id) {",
+                  "        pm.environment.set('card_id', card.id);",
+                  "        pm.environment.set('card_name', card.name);",
+                  "        console.log('card_id salvo:', card.id, '| Nome:', card.name);",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.warn('Não foi possível extrair card_id:', e.message);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 32,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"create_card\",\n    \"arguments\": {\n      \"list_id\": \"{{list_id}}\",\n      \"name\": \"Card criado via Postman\",\n      \"description\": \"Testando o servidor MCP do Trello\",\n      \"due\": \"2026-07-15T12:00:00Z\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Cria um novo card na coluna indicada por `list_id`. Salva automaticamente o `card_id` do card criado."
+          }
+        },
+        {
+          "name": "update_card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 33,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"update_card\",\n    \"arguments\": {\n      \"card_id\": \"{{card_id}}\",\n      \"name\": \"Card atualizado via Postman\",\n      \"description\": \"Descrição atualizada\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Atualiza nome e/ou descrição de um card. Usa a variável `card_id`. Omita `name` ou `description` do body para não alterá-los."
+          }
+        },
+        {
+          "name": "move_card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 34,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"move_card\",\n    \"arguments\": {\n      \"card_id\": \"{{card_id}}\",\n      \"target_list_id\": \"{{list_id}}\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Move um card para outra coluna. Substitua `target_list_id` pelo ID da coluna de destino."
+          }
+        },
+        {
+          "name": "archive_card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 35,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"archive_card\",\n    \"arguments\": {\n      \"card_id\": \"{{card_id}}\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Arquiva (fecha) o card indicado por `card_id`. Ação irreversível via MCP — o card pode ser desarquivado manualmente no Trello."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Checklists",
+      "item": [
+        {
+          "name": "get_card_checklists",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Salva o ID do primeiro checklist encontrado",
+                  "try {",
+                  "    var json = pm.response.json();",
+                  "    var content = json.result.content[0].text;",
+                  "    var checklists = JSON.parse(content);",
+                  "    if (checklists.length > 0) {",
+                  "        pm.environment.set('checklist_id', checklists[0].id);",
+                  "        pm.environment.set('checklist_name', checklists[0].name);",
+                  "        console.log('checklist_id salvo:', checklists[0].id, '| Nome:', checklists[0].name);",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.warn('Não foi possível extrair checklist_id:', e.message);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 40,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_card_checklists\",\n    \"arguments\": {\n      \"card_id\": \"{{card_id}}\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Lista todos os checklists e seus itens de um card. Usa a variável `card_id`. Salva automaticamente o `checklist_id` do primeiro checklist."
+          }
+        },
+        {
+          "name": "create_checklist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Salva o ID do checklist criado",
+                  "try {",
+                  "    var json = pm.response.json();",
+                  "    var content = json.result.content[0].text;",
+                  "    var checklist = JSON.parse(content);",
+                  "    if (checklist.id) {",
+                  "        pm.environment.set('checklist_id', checklist.id);",
+                  "        pm.environment.set('checklist_name', checklist.name);",
+                  "        console.log('checklist_id salvo:', checklist.id, '| Nome:', checklist.name);",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.warn('Não foi possível extrair checklist_id:', e.message);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 41,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"create_checklist\",\n    \"arguments\": {\n      \"card_id\": \"{{card_id}}\",\n      \"name\": \"Checklist de Teste\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Cria um checklist no card indicado por `card_id`. Salva automaticamente o `checklist_id`."
+          }
+        },
+        {
+          "name": "add_check_item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trello-Api-Key", "value": "{{trello_api_key}}" },
+              { "key": "X-Trello-Token", "value": "{{trello_token}}" },
+              { "key": "mcp-session-id", "value": "{{mcp_session_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 42,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"add_check_item\",\n    \"arguments\": {\n      \"checklist_id\": \"{{checklist_id}}\",\n      \"name\": \"Item de exemplo\",\n      \"checked\": false\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            },
+            "description": "Adiciona um item ao checklist indicado por `checklist_id`. Use `checked: true` para criar o item já marcado como concluído."
+          }
+        }
+      ]
+    }
+  ]
+}
