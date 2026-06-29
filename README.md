@@ -7,6 +7,10 @@ Servidor MCP (Model Context Protocol) para integração com o Trello, exposto vi
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Conta no Trello com [API Key e Token](https://trello.com/power-ups/admin) gerados
 
+## Documentação da API do Trello
+
+[https://developer.atlassian.com/cloud/trello/rest/](https://developer.atlassian.com/cloud/trello/rest/)
+
 ## Obtendo as credenciais do Trello
 
 Para usar o servidor, você precisará de uma chave de API e um token do Trello. Siga os passos abaixo para obtê-los:
