@@ -59,58 +59,26 @@ Crie o arquivo `TrelloMcpHttp/appsettings.Development.json` (ignorado pelo git) 
 
 Alternativamente, use variáveis de ambiente `Trello__ApiKey` e `Trello__Token`.
 
-## Executando o servidor
+O endpoint MCP fica disponível em `http://localhost:5123/mcp` ou `https://localhost:7138/mcp`.
 
-```bash
-# HTTP (porta 5123)
-dotnet run --project TrelloMcpHttp/TrelloMcpHttp.csproj --launch-profile http
-
-# HTTPS (porta 7138)
-dotnet run --project TrelloMcpHttp/TrelloMcpHttp.csproj --launch-profile https
-```
-
-O endpoint MCP fica disponível em `http://localhost:5123/mcp`.
-
-## Conectando um cliente MCP
-
-Configure seu cliente MCP (ex: Claude Desktop, Cursor) apontando para `http://localhost:5123/mcp` com transporte HTTP.
-
-Exemplo de configuração para Claude Desktop (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "trello": {
-      "url": "http://localhost:5123/mcp",
-      "headers": {
-        "X-Trello-Api-Key": "<sua-api-key>",
-        "X-Trello-Token": "<seu-token>"
-      }
-    }
-  }
-}
-```
+> **Aviso — HTTPS:** Em ambiente de desenvolvimento, prefira usar `http://localhost:5123/mcp` para evitar problemas com certificados. A url `https://localhost:7138/mcp` funciona bem no Postman mas é mais complicado no Claude Code.
 
 ### Conectando via Claude Code CLI
 
 Para adicionar o MCP diretamente pelo terminal do Claude Code:
 
 ```bash
-# Adicionar no projeto atual
-claude mcp add trello --transport http http://localhost:5123/mcp \
-  --header "X-Trello-Api-Key: sua-api-key" \
-  --header "X-Trello-Token: seu-token"
-
 # Adicionar globalmente (disponível em todos os projetos)
-claude mcp add --scope user trello --transport http http://localhost:5123/mcp \
-  --header "X-Trello-Api-Key: sua-api-key" \
-  --header "X-Trello-Token: seu-token"
+claude mcp add --scope user trello --transport http http://localhost:5123/mcp --header "X-Trello-Api-Key: sua-api-key" --header "X-Trello-Token: seu-token"
+
+# Adicionar no projeto atual
+claude mcp add trello --transport http http://localhost:5123/mcp --header "X-Trello-Api-Key: sua-api-key" --header "X-Trello-Token: seu-token"
 ```
 
 Outros comandos úteis:
 
 ```bash
-claude mcp list          # Lista MCPs configurados
+claude mcp list          # Lista MCPs configurados e testa a conectividade
 claude mcp get trello    # Ver detalhes do MCP
 claude mcp remove trello # Remover o MCP
 ```
@@ -152,7 +120,7 @@ O protocolo MCP sobre HTTP usa o padrão JSON-RPC 2.0. Todas as chamadas são fe
 Antes de chamar qualquer tool, é necessário enviar a mensagem de inicialização do protocolo MCP.
 
 - **Método:** `POST`
-- **URL:** `http://localhost:5123/mcp`
+- **URL:** `https://localhost:7138/mcp`
 - **Headers:**
   ```
   Content-Type: application/json
@@ -181,7 +149,7 @@ Guarde o header `mcp-session-id` retornado na resposta — ele é necessário na
 ### 2. Listar boards (`get_boards`)
 
 - **Método:** `POST`
-- **URL:** `http://localhost:5123/mcp`
+- **URL:** `https://localhost:7138/mcp`
 - **Headers:**
   ```
   Content-Type: application/json
@@ -205,7 +173,7 @@ Guarde o header `mcp-session-id` retornado na resposta — ele é necessário na
 ### 3. Criar um card (`create_card`)
 
 - **Método:** `POST`
-- **URL:** `http://localhost:5123/mcp`
+- **URL:** `https://localhost:7138/mcp`
 - **Headers:** (mesmos do passo 2)
 - **Body (raw JSON):**
   ```json
