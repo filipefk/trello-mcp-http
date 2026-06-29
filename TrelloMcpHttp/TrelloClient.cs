@@ -22,11 +22,14 @@ public sealed class TrelloClient(HttpClient http, IOptions<TrelloOptions> option
     public Task<JsonArray?> GetCardsAsync(string listId, CancellationToken ct = default) =>
         http.GetFromJsonAsync<JsonArray>($"lists/{listId}/cards?fields=id,name,desc,idList,url&{Auth()}", ct);
 
-    public async Task<JsonObject?> CreateCardAsync(string idList, string name, string desc, CancellationToken ct = default)
+    public Task<JsonObject?> GetCardAsync(string cardId, CancellationToken ct = default) =>
+        http.GetFromJsonAsync<JsonObject>($"cards/{cardId}?fields=id,name,desc,due,idList,url&{Auth()}", ct);
+
+    public async Task<JsonObject?> CreateCardAsync(string idList, string name, string desc, string? due, CancellationToken ct = default)
     {
-        var response = await http.PostAsync(
-            $"cards?idList={Uri.EscapeDataString(idList)}&name={Uri.EscapeDataString(name)}&desc={Uri.EscapeDataString(desc)}&{Auth()}",
-            content: null, ct);
+        var extra = $"idList={Uri.EscapeDataString(idList)}&name={Uri.EscapeDataString(name)}&desc={Uri.EscapeDataString(desc)}";
+        if (due is not null) extra += $"&due={Uri.EscapeDataString(due)}";
+        var response = await http.PostAsync($"cards?{extra}&{Auth()}", content: null, ct);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<JsonObject>(ct);
     }
@@ -57,4 +60,26 @@ public sealed class TrelloClient(HttpClient http, IOptions<TrelloOptions> option
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<JsonObject>(ct);
     }
+
+    public async Task<JsonObject?> CreateChecklistAsync(string cardId, string name, CancellationToken ct = default)
+    {
+        var response = await http.PostAsync(
+            $"checklists?idCard={Uri.EscapeDataString(cardId)}&name={Uri.EscapeDataString(name)}&{Auth()}",
+            content: null, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonObject>(ct);
+    }
+
+    public async Task<JsonObject?> AddCheckItemAsync(string checklistId, string name, bool @checked, CancellationToken ct = default)
+    {
+        var state = @checked ? "complete" : "incomplete";
+        var response = await http.PostAsync(
+            $"checklists/{checklistId}/checkItems?name={Uri.EscapeDataString(name)}&checked={state}&{Auth()}",
+            content: null, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonObject>(ct);
+    }
+
+    public Task<JsonArray?> GetCardChecklistsAsync(string cardId, CancellationToken ct = default) =>
+        http.GetFromJsonAsync<JsonArray>($"cards/{cardId}/checklists?{Auth()}", ct);
 }
