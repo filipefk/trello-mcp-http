@@ -3,13 +3,16 @@ using System.Text.Json.Nodes;
 
 namespace TrelloMcpHttp;
 
-public sealed class TrelloClient(HttpClient http, IOptions<TrelloOptions> options)
+public sealed class TrelloClient(HttpClient http, IOptions<TrelloOptions> options, IHttpContextAccessor httpContextAccessor)
 {
     private readonly TrelloOptions _opts = options.Value;
 
     private string Auth(string? extra = null)
     {
-        var q = $"key={_opts.ApiKey}&token={_opts.Token}";
+        var headers = httpContextAccessor.HttpContext?.Request.Headers;
+        var apiKey = headers?["X-Trello-Api-Key"].FirstOrDefault() ?? _opts.ApiKey;
+        var token = headers?["X-Trello-Token"].FirstOrDefault() ?? _opts.Token;
+        var q = $"key={apiKey}&token={token}";
         return extra is null ? q : $"{q}&{extra}";
     }
 

@@ -3,6 +3,7 @@ using TrelloMcpHttp;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<TrelloOptions>(builder.Configuration.GetSection("Trello"));
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddHttpClient<TrelloClient>(client =>
 {

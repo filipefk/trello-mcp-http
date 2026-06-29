@@ -20,7 +20,20 @@ O servidor sobe em `http://localhost:5123` (http) ou `https://localhost:7138` (h
 
 ## Configuração
 
-As credenciais do Trello são configuradas em `appsettings.json` (ou via variáveis de ambiente) na seção `Trello`:
+### Credenciais por requisição (recomendado para uso multi-usuário)
+
+O cliente MCP passa as credenciais como headers HTTP em cada requisição:
+
+```
+X-Trello-Api-Key: <api-key>
+X-Trello-Token: <token>
+```
+
+Isso permite que diferentes clientes usem suas próprias credenciais sem nenhuma configuração no servidor.
+
+### Credenciais globais (fallback)
+
+Se os headers não forem enviados, o servidor usa os valores configurados em `appsettings.json` (ou variáveis de ambiente) na seção `Trello`:
 
 ```json
 {
@@ -37,7 +50,7 @@ Nunca commitar credenciais reais. Use `appsettings.Development.json` (ignorado p
 
 - **`Program.cs`** — bootstrap: registra `TrelloOptions`, `TrelloClient` (via `IHttpClientFactory`) e o servidor MCP com transporte HTTP.
 - **`TrelloOptions.cs`** — POCO que mapeia a seção `Trello` do `appsettings.json` (`ApiKey`, `Token`).
-- **`TrelloClient.cs`** — wrapper sobre `HttpClient` que chama a API REST do Trello (`https://api.trello.com/1/`). Todos os parâmetros de autenticação são appendados na query string via `Auth()`.
+- **`TrelloClient.cs`** — wrapper sobre `HttpClient` que chama a API REST do Trello (`https://api.trello.com/1/`). O método `Auth()` resolve credenciais priorizando os headers `X-Trello-Api-Key` / `X-Trello-Token` da requisição atual (via `IHttpContextAccessor`), com fallback para `TrelloOptions`.
 - **`TrelloTools.cs`** — classe anotada com `[McpServerToolType]` que expõe as ferramentas MCP. Cada método público anotado com `[McpServerTool]` vira uma tool disponível para clientes MCP.
 
 ## Adicionando novas tools
