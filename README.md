@@ -61,15 +61,13 @@ Crie o arquivo `TrelloMcpHttp/appsettings.Development.json` (ignorado pelo git) 
 }
 ```
 
-Alternativamente, use variáveis de ambiente `Trello__ApiKey` e `Trello__Token`.
-
-O endpoint MCP fica disponível em `http://localhost:5123/mcp` ou `https://localhost:7138/mcp`.
+Em ambiente de desenvolvimento o endpoint MCP fica disponível em `http://localhost:5123/mcp` ou `https://localhost:7138/mcp`.
 
 > **Aviso — HTTPS:** Em ambiente de desenvolvimento, prefira usar `http://localhost:5123/mcp` para evitar problemas com certificados. A url `https://localhost:7138/mcp` funciona bem no Postman mas é mais complicado no Claude Code.
 
-### Conectando via Claude Code CLI
+### Adicionando o MCP no Claude Code
 
-Para adicionar o MCP diretamente pelo terminal do Claude Code:
+É necessário ter o Claude Code CLI instalado. Diretamente no terminal (PowerShell por exemplo) rode o comando abaixo:
 
 ```bash
 # Adicionar globalmente (disponível em todos os projetos)
@@ -86,6 +84,8 @@ claude mcp list          # Lista MCPs configurados e testa a conectividade
 claude mcp get trello    # Ver detalhes do MCP
 claude mcp remove trello # Remover o MCP
 ```
+
+> **Aviso:** O Claude Code só vai identificar o MCP adicionado se o comando `claude mcp list` indicar que o mcp trello está disponível
 
 ## Tools disponíveis
 
