@@ -85,4 +85,31 @@ public sealed class TrelloClient(HttpClient http, IOptions<TrelloOptions> option
 
     public Task<JsonArray?> GetCardChecklistsAsync(string cardId, CancellationToken ct = default) =>
         http.GetFromJsonAsync<JsonArray>($"cards/{cardId}/checklists?{Auth()}", ct);
+
+    public Task<JsonArray?> GetBoardLabelsAsync(string boardId, CancellationToken ct = default) =>
+        http.GetFromJsonAsync<JsonArray>($"boards/{boardId}/labels?{Auth()}", ct);
+
+    public async Task<JsonObject?> CreateLabelAsync(string boardId, string name, string? color, CancellationToken ct = default)
+    {
+        var extra = $"idBoard={Uri.EscapeDataString(boardId)}&name={Uri.EscapeDataString(name)}";
+        if (color is not null) extra += $"&color={Uri.EscapeDataString(color)}";
+        var response = await http.PostAsync($"labels?{extra}&{Auth()}", content: null, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonObject>(ct);
+    }
+
+    public async Task<JsonArray?> AddLabelToCardAsync(string cardId, string labelId, CancellationToken ct = default)
+    {
+        var response = await http.PostAsync(
+            $"cards/{cardId}/idLabels?value={Uri.EscapeDataString(labelId)}&{Auth()}",
+            content: null, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonArray>(ct);
+    }
+
+    public async Task RemoveLabelFromCardAsync(string cardId, string labelId, CancellationToken ct = default)
+    {
+        var response = await http.DeleteAsync($"cards/{cardId}/idLabels/{labelId}?{Auth()}", ct);
+        response.EnsureSuccessStatusCode();
+    }
 }

@@ -105,6 +105,10 @@ claude mcp remove trello # Remover o MCP
 | `create_checklist` | Cria um checklist em um card |
 | `add_check_item` | Adiciona um item a um checklist |
 | `get_card_checklists` | Lista todos os checklists de um card |
+| `get_board_labels` | Lista todas as etiquetas de um board |
+| `create_label` | Cria uma nova etiqueta em um board (cores: `red`, `orange`, `yellow`, `green`, `blue`, `purple`, `pink`, `sky`, `lime`, `black`) |
+| `add_label_to_card` | Adiciona uma etiqueta a um card |
+| `remove_label_from_card` | Remove uma etiqueta de um card |
 
 ## Testando via Postman
 

@@ -148,4 +148,44 @@ public sealed class TrelloTools(TrelloClient trello)
         var result = await trello.GetCardChecklistsAsync(card_id, ct);
         return result?.ToJsonString() ?? "[]";
     }
+
+    [McpServerTool, Description("Lista todas as etiquetas (labels) de um board do Trello.")]
+    public async Task<string> get_board_labels(
+        [Description("ID do board")] string board_id,
+        CancellationToken ct = default)
+    {
+        var result = await trello.GetBoardLabelsAsync(board_id, ct);
+        return result?.ToJsonString() ?? "[]";
+    }
+
+    [McpServerTool, Description("Cria uma nova etiqueta (label) em um board do Trello. Cores válidas: red, orange, yellow, green, blue, purple, pink, sky, lime, black. Deixe color nulo para etiqueta sem cor.")]
+    public async Task<string> create_label(
+        [Description("ID do board onde a etiqueta será criada")] string board_id,
+        [Description("Nome da etiqueta")] string name,
+        [Description("Cor da etiqueta (red, orange, yellow, green, blue, purple, pink, sky, lime, black) ou null para sem cor")] string? color = null,
+        CancellationToken ct = default)
+    {
+        var result = await trello.CreateLabelAsync(board_id, name, color, ct);
+        return result?.ToJsonString() ?? "{}";
+    }
+
+    [McpServerTool, Description("Adiciona uma etiqueta (label) existente a um card do Trello.")]
+    public async Task<string> add_label_to_card(
+        [Description("ID do card")] string card_id,
+        [Description("ID da etiqueta a adicionar")] string label_id,
+        CancellationToken ct = default)
+    {
+        var result = await trello.AddLabelToCardAsync(card_id, label_id, ct);
+        return result?.ToJsonString() ?? "[]";
+    }
+
+    [McpServerTool, Description("Remove uma etiqueta (label) de um card do Trello.")]
+    public async Task<string> remove_label_from_card(
+        [Description("ID do card")] string card_id,
+        [Description("ID da etiqueta a remover")] string label_id,
+        CancellationToken ct = default)
+    {
+        await trello.RemoveLabelFromCardAsync(card_id, label_id, ct);
+        return $"Etiqueta '{label_id}' removida do card '{card_id}' com sucesso.";
+    }
 }

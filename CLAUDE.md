@@ -48,10 +48,19 @@ Nunca commitar credenciais reais. Use `appsettings.Development.json` (ignorado p
 
 ## Arquitetura
 
-- **`Program.cs`** — bootstrap: registra `TrelloOptions`, `TrelloClient` (via `IHttpClientFactory`) e o servidor MCP com transporte HTTP.
+- **`Program.cs`** — bootstrap: configura Serilog, registra `TrelloOptions`, `TrelloClient` (via `IHttpClientFactory`) e o servidor MCP com transporte HTTP. Aplica o `McpTrafficLoggingMiddleware` no path `/mcp`.
 - **`TrelloOptions.cs`** — POCO que mapeia a seção `Trello` do `appsettings.json` (`ApiKey`, `Token`).
 - **`TrelloClient.cs`** — wrapper sobre `HttpClient` que chama a API REST do Trello (`https://api.trello.com/1/`). O método `Auth()` resolve credenciais priorizando os headers `X-Trello-Api-Key` / `X-Trello-Token` da requisição atual (via `IHttpContextAccessor`), com fallback para `TrelloOptions`.
 - **`TrelloTools.cs`** — classe anotada com `[McpServerToolType]` que expõe as ferramentas MCP. Cada método público anotado com `[McpServerTool]` vira uma tool disponível para clientes MCP.
+- **`Middleware/McpTrafficLoggingMiddleware.cs`** — loga requisições e respostas no endpoint `/mcp`. Headers sensíveis (`X-Trello-Api-Key`, `X-Trello-Token`) são mascarados como `***`.
+
+## Logging
+
+Serilog configurado com dois sinks em `Program.cs`:
+- **Console** — logs em tempo real no terminal
+- **Arquivo** — `logs/log.txt` com rotação diária
+
+O nível de log é lido de `Logging:LogLevel:Default` no `appsettings.json` (padrão: `Information`).
 
 ## Adicionando novas tools
 
