@@ -1,8 +1,15 @@
+using System.Text.RegularExpressions;
+
 namespace TrelloMcpHttp.Middleware;
 
-public sealed class McpTrafficLoggingMiddleware(RequestDelegate next, ILogger<McpTrafficLoggingMiddleware> logger)
+public sealed partial class McpTrafficLoggingMiddleware(RequestDelegate next, ILogger<McpTrafficLoggingMiddleware> logger)
 {
-    private static readonly string[] SensitiveHeaders = ["X-Trello-Api-Key", "X-Trello-Token"];
+    private static readonly string[] SensitiveHeaders = [McpApiKey.HeaderName, "Authorization"];
+
+    // Redige o parâmetro "password" da tool execute_shell_command para não gravar
+    // em texto claro no log o único segredo que protege a execução de comandos.
+    [GeneratedRegex("\"password\"\\s*:\\s*\"[^\"]*\"", RegexOptions.IgnoreCase)]
+    private static partial Regex PasswordFieldRegex();
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -10,10 +17,24 @@ public sealed class McpTrafficLoggingMiddleware(RequestDelegate next, ILogger<Mc
             .Where(h => !string.Equals(h.Key, "Cookie", StringComparison.OrdinalIgnoreCase))
             .Select(h => $"{h.Key}={(SensitiveHeaders.Contains(h.Key, StringComparer.OrdinalIgnoreCase) ? "***" : h.Value.ToString())}"));
 
+        // O GET /mcp abre o canal SSE do transporte MCP e fica aberto por toda a sessão — bufferizar
+        // a resposta em MemoryStream (como abaixo) faria o canal nunca ser entregue de forma incremental
+        // e acumularia indefinidamente em memória. Só corpos de requisição/resposta de tamanho finito
+        // (POST, o canal de mensagens JSON-RPC) são bufferizados e logados por inteiro.
+        if (HttpMethods.IsGet(context.Request.Method))
+        {
+            logger.LogInformation(
+                "MCP request: {Method} {Path} | Headers: {Headers} | Body: (canal SSE, não bufferizado)",
+                context.Request.Method, context.Request.Path, headers);
+            await next(context);
+            return;
+        }
+
         context.Request.EnableBuffering();
         using var requestReader = new StreamReader(context.Request.Body, leaveOpen: true);
         var requestBody = await requestReader.ReadToEndAsync();
         context.Request.Body.Position = 0;
+        requestBody = PasswordFieldRegex().Replace(requestBody, "\"password\":\"***\"");
 
         logger.LogInformation(
             "MCP request: {Method} {Path} | Headers: {Headers} | Body: {Body}",

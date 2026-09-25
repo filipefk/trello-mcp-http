@@ -1,0 +1,205 @@
+{
+  "info": {
+    "_postman_id": "3a91c7e2-5b48-4d6f-9c11-77e5a2b40d19",
+    "name": "GenerateApiKey",
+    "description": "Endpoints do TrelloMcpHttp (protegidos pelo header x-api-key com a chave MCP em texto puro) para gerar e decodificar a API Key do header x-api-key.\n\nVariaveis usadas (ver GenerateApiKey.postman_environment.json): baseUrl, mcpApiKey, trelloApiKey, trelloToken e apiKey.\n\nO POST /api-key/generate salva automaticamente a chave gerada na variavel de ambiente apiKey, que o POST /api-key/decode consome.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "6513668",
+    "_collection_link": "https://go.postman.co/collection/6513668-3a91c7e2-5b48-4d6f-9c11-77e5a2b40d19?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "POST /api-key/generate",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();\npm.environment.set(\"apiKey\", json.apiKey);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{mcpApiKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"mcpApiKey\": \"{{mcpApiKey}}\",\n    \"trelloApiKey\": \"{{trelloApiKey}}\",\n    \"trelloToken\": \"{{trelloToken}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api-key/generate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api-key",
+            "generate"
+          ]
+        },
+        "description": "Gera a API Key unica do header x-api-key a partir de [mcpApiKey, trelloApiKey, trelloToken].\n\ntrelloApiKey e trelloToken sao opcionais (podem ir vazios); mcpApiKey e obrigatorio, ausente ou em branco retorna 400.\n\nO script de teste salva a chave retornada na variavel de ambiente apiKey."
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api-key/decode",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{mcpApiKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"apiKey\": \"{{apiKey}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api-key/decode",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api-key",
+            "decode"
+          ]
+        },
+        "description": "Desfaz a API Key e devolve { mcpApiKey, trelloApiKey, trelloToken }. Chave invalida retorna 400."
+      },
+      "response": []
+    },
+    {
+      "name": "1. Initialize",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function parseMcpResponse() {\n    var body = pm.response.text();\n    var dataLine = body.split('\\n').find(l => l.startsWith('data:'));\n    return JSON.parse(dataLine.replace(/^data:\\s*/, ''));\n}\n\n// Salva o session id retornado no header\nvar sessionId = pm.response.headers.get('mcp-session-id');\nif (sessionId) {\n    pm.environment.set('mcp_session_id', sessionId);\n    console.log('mcp-session-id salvo:', sessionId);\n} else {\n    console.warn('Header mcp-session-id não encontrado na resposta.');\n}\n\n// Valida que a resposta é 200 e tem result\npm.test('Status 200', function () {\n    pm.response.to.have.status(200);\n});\n\npm.test('Resposta contém result', function () {\n    var json = parseMcpResponse();\n    pm.expect(json).to.have.property('result');\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2024-11-05\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"postman\",\n      \"version\": \"1.0\"\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/mcp",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "mcp"
+          ]
+        },
+        "description": "Inicia a sessão MCP. O `mcp-session-id` retornado no header é salvo automaticamente na variável de environment `mcp_session_id`."
+      },
+      "response": []
+    },
+    {
+      "name": "2. List Tools",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function parseMcpResponse() {\n    var body = pm.response.text();\n    var dataLine = body.split('\\n').find(l => l.startsWith('data:'));\n    return JSON.parse(dataLine.replace(/^data:\\s*/, ''));\n}\n\npm.test('Status 200', function () {\n    pm.response.to.have.status(200);\n});\n\npm.test('Resposta contém lista de tools', function () {\n    var json = parseMcpResponse();\n    pm.expect(json.result).to.have.property('tools');\n    pm.expect(json.result.tools).to.be.an('array');\n    console.log('Tools disponíveis:', json.result.tools.map(t => t.name));\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{apiKey}}"
+          },
+          {
+            "key": "mcp-session-id",
+            "value": "{{mcp_session_id}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/list\",\n  \"params\": {}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/mcp",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "mcp"
+          ]
+        },
+        "description": "Lista todas as tools disponíveis no servidor MCP."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5250"
+    },
+    {
+      "key": "apiKey",
+      "value": ""
+    }
+  ]
+}

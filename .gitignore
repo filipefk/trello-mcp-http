@@ -109,7 +109,7 @@ Generated_Code/
 # Backup & report files from converting an old project file to a newer
 # Visual Studio version. Backup files are not needed, because we have git ;-)
 _UpgradeReport_Files/
-Backup*/
+backups/
 UpgradeLog*.XML
 UpgradeLog*.htm
 
@@ -135,7 +135,3 @@ $RECYCLE.BIN/
 .DS_Store
 
 _NCrunch*
-/Apagar-e-criar-nova-migration.bat
-/Apagar-todos-logs-da-api.bat
-/Apagar-todos-arquivos-anexos.bat
-/Apagar-todos-test-result.bat
